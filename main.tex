@@ -1,0 +1,58 @@
+\documentclass[12pt]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{subfigure}
+
+
+\title{Advanced Information Systems Security}
+\author{Alessandro Milani}
+\date{\today}
+
+
+\tcbset{
+    sharp corners,
+    colback = white,
+    before skip = 0.2cm,    % add extra space before the box
+    after skip = 0.5cm      % add extra space after the box
+}                           % setting global options for tcolorbox
+ 
+\definecolor{main}{HTML}{5989cf}    % setting main color to be used
+\definecolor{sub}{HTML}{cde4ff}     % setting sub color to be used
+ 
+\newtcolorbox{boxH}{
+    colback = sub, 
+    colframe = main, 
+    boxrule = 0pt, 
+    leftrule = 6pt % left rule weight
+}
+ 
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\input{chapters/01-tls.tex}
+% Add more sections as needed
+
+\end{document}
+
+% Sample of a centered image in LaTeX
+% \begin{figure}[h]
+%     \centering
+%     \includegraphics[width=0.5\textwidth]{path/to/image.png}
+%     \caption{Sample Image}
+%     \label{fig:sample_image}
+% \end{figure}
