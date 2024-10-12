@@ -1,0 +1,216 @@
+\chapter{SSH}
+
+\section{Introduction}
+
+
+
+\subsection{history}
+First version of SSH by Tatu Ylönen in 1995 as a response to a hacking incident (sniffer on backbone, thousands of user+pwd copied). \\ In the same year was founded the company SSH Communications Security. \\ in 1999 a OpenSSH fork appears in ObenBSD 2.6. \\
+The actual version is SSH-2 by IETF (Internet Engineering Task Force) in 2006, that is:
+\begin{itemize}
+    \item incompatible with SSH-1
+    \item improvements in security and features
+    \item frequently is the only version supported nowadays
+\end{itemize}
+
+\section{Architecture}
+SSH (Secure Shell) is based on a \textbf{three-layer architecture}, which includes the following protocols:
+
+\begin{itemize}
+    \item \textbf{Transport Layer Protocol:} 
+    \begin{itemize}[itemsep=0pt]
+        \item Establishes the initial connection.
+        \item Provides server authentication.
+        \item Ensures confidentiality and integrity with \textbf{Perfect Forward Secrecy (PFS)}.
+        \item Supports key re-exchange (as per \textbf{RFC 4253}, it is recommended after 1 GB of data transmission or 1 hour of communication).
+    \end{itemize}
+    
+    \item \textbf{User Authentication Protocol:} 
+    \begin{itemize}
+        \item Authenticates the client to the server.
+    \end{itemize}
+    
+    \item \textbf{Connection Protocol:} 
+    \begin{itemize}
+        \item Supports multiple connections (channels) over a single secure channel, which is implemented by the Transport Layer Protocol.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Transport Layer Protocol}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/ssh\_TLP.png}
+    \caption{SSH Transport Layer Protocol}
+    \label{fig:ssh-tlp}
+\end{figure}
+
+During the TCP connection setup, the server listens on port 22 (default) and the client is the one that initiates the connection. After this, both sides must send a version string of the following form: \text{SSH-protoversion-softwareversion SP comments CR LF}, used to inidcate the capabilities of an implementation (riggers compatibility extensions). \\
+\textit{All packets that follow the version string exchange is sent 
+using the Binary Packet Protocol }
+
+
+\subsubsection{Binary Packet Protocol}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/ssh\_bpp.png}
+    \caption{SSH Binary Packet Protocol}
+    \label{fig:ssh-bpp}
+\end{figure}
+
+The SSH Binary Packet Protocol (BPP) is structured as follows:
+
+\textbf{Packet Length}
+\begin{itemize}
+    \item The packet length does \textbf{not} include the MAC or the packet length field itself.
+\end{itemize}
+
+\textbf{Payload}
+\begin{itemize}[itemsep=0pt]
+    \item The payload size is calculated as:
+    \[
+    \text{payload\_size} = \text{packet\_length} - \text{padding\_length} - 1
+    \]
+    \item The maximum uncompressed payload size is \textbf{32,768 bytes}.
+    \item The payload might be compressed.
+\end{itemize}
+
+\textbf{Random Padding}
+\begin{itemize}
+    \item Padding can range from \textbf{4 to 255 bytes}.
+    \item The total packet length (excluding the MAC) must be a multiple of \texttt{max(8, cipher\_block\_size)} even when a stream cipher is used.
+\end{itemize}
+
+\textbf{MAC (Message Authentication Code)}
+\begin{itemize}
+    \item The MAC is computed as part of the authenticate-and-encrypt schema.
+    \item It is computed over the cleartext packet and an implicit sequence number.
+    \item Since the MAC requires the packet to be decrypted before checking its integrity, this process could be exploited for a \textbf{denial of service (DoS)} attack.
+\end{itemize}
+
+
+\subsubsection{TLP key exchange}
+algorithm negotiation:
+\begin{itemize}[itemsep=0pt]
+    \item SSH\_MSG\_KEXINIT
+    \item cookie (16 random bytes)
+    \item kex\_algorithms
+    \item server\_host\_key\_algorithms
+    \item encryption\_algorithms\_client\_to\_server, …\_server\_to\_client
+    \item mac\_algorithms\_client\_to\_server, …\_server\_to\_client
+    \item compression\_algorithms\_client\_to\_server, …\_server\_to\_client
+    \item languages\_client\_to\_server, …\_server\_to\_client
+    \item first\_kex\_packet\_follows (flag)
+    \begin{itemize}
+        \item attempt to guess agreed kex\_algorithm
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Algorithm Specification}
+\begin{itemize}[itemsep=0pt]
+    \item kex\_algorithms (note: contains HASH)
+    \begin{itemize}
+        \item e.g. diffie-hellman-group1-sha1, ecdh-sha2-OID\_of\_curve
+    \end{itemize}
+    \item server\_host\_key\_algorithms
+    \begin{itemize}
+        \item e.g. ssh-rsa
+    \end{itemize}
+    \item encryption\_algorithms\_X\_to\_Y
+    \begin{itemize}
+        \item e.g. aes-128-cbc, aes-256-ctr, aead\_aes\_128\_gcm
+    \end{itemize}
+    \item mac\_algorithms\_X\_to\_Y
+    \begin{itemize}
+        \item e.g. hmac-sha1, hmac-sha2-256, aead\_aes\_128\_gcm
+    \end{itemize}
+    \item compression\_algorithms\_X\_to\_Y
+    \begin{itemize}
+        \item e.g. none, zlib
+    \end{itemize}
+    \item complete list maintained by IANA: https://www.iana.org/assignments/ssh-parameters/ssh-parameters.xhtml
+\end{itemize}
+
+\section*{SSH: Diffie-Hellman (DH) Key Agreement}
+
+The Diffie-Hellman key agreement process in SSH follows these steps:
+
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{[C] (Client)} generates a random number \( x \) and computes:
+    \[
+    e = g^x \mod p
+    \]
+    \item \textbf{[C > S]}: Client sends \( e \) to the server.
+    
+    \item \textbf{[S] (Server)} generates a random number \( y \) and computes:
+    \[
+    f = g^y \mod p
+    \]
+    \item \textbf{[S]} computes the shared secret:
+    \[
+    K = e^y \mod p = g^{xy} \mod p
+    \]
+    The server then computes the exchange hash:
+    \[
+    H = \text{HASH}( c\_version\_string \,|\, s\_version\_string \,|\, c\_kex\_init\_msg \,|\, s\_kex\_init\_msg \,|\, s\_host\_PK \,|\, e \,|\, f \,|\, K )
+    \]
+    \item \textbf{[S]} generates a signature \( \text{sigH} \) on \( H \) using its private key \( s\_host\_SK \). This may involve an additional hash computation on \( H \).
+    
+    \item \textbf{[S > C]}: Server sends its public key \( s\_host\_PK \), \( f \), and \( \text{sigH} \) to the client.
+    
+    \item \textbf{[C]} verifies that \( s\_host\_PK \) is indeed the server's public key.
+    
+    \item \textbf{[C]} computes the shared secret:
+    \[
+    K = f^x \mod p = g^{xy} \mod p
+    \]
+    The client then computes the exchange hash:
+    \[
+    H = \text{HASH}( \ldots )
+    \]
+    \item \textbf{[C]} verifies the signature \( \text{sigH} \) on \( H \).
+
+    \item \textbf{[C, S]}: The exchange hash \( H \) becomes the session ID.
+\end{itemize}
+
+\subsection{SSH: Key Derivation}
+
+In SSH, keys are derived using the shared secret \( K \), the exchange hash \( H \), and the \texttt{session\_id}. The derivation process is as follows:
+
+\textbf{Initial IV (Initialization Vector)}
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{Client to Server:} 
+    \[
+    \text{IV}_{\text{C to S}} = \text{HASH}( K \,||\, H \,||\, "A" \,||\, \text{session\_id} )
+    \]
+    \item \textbf{Server to Client:}
+    \[
+    \text{IV}_{\text{S to C}} = \text{HASH}( K \,||\, H \,||\, "B" \,||\, \text{session\_id} )
+    \]
+\end{itemize}
+
+\textbf{Encryption Key}
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{Client to Server:}
+    \[
+    \text{Key}_{\text{C to S}} = \text{HASH}( K \,||\, H \,||\, "C" \,||\, \text{session\_id} )
+    \]
+    \item \textbf{Server to Client:}
+    \[
+    \text{Key}_{\text{S to C}} = \text{HASH}( K \,||\, H \,||\, "D" \,||\, \text{session\_id} )
+    \]
+\end{itemize}
+
+\textbf{Integrity Key}
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{Client to Server:}
+    \[
+    \text{MAC}_{\text{C to S}} = \text{HASH}( K \,||\, H \,||\, "E" \,||\, \text{session\_id} )
+    \]
+    \item \textbf{Server to Client:}
+    \[
+    \text{MAC}_{\text{S to C}} = \text{HASH}( K \,||\, H \,||\, "F" \,||\, \text{session\_id} )
+    \]
+\end{itemize}
+
+\textbf{Note:} The \texttt{session\_id} is the \( H \) value computed during the first key exchange and remains unchanged even when key re-exchange is performed.
