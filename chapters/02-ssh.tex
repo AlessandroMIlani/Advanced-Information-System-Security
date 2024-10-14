@@ -1,3 +1,4 @@
+
 \chapter{SSH}
 
 \section{Introduction}
@@ -214,3 +215,84 @@ In SSH, keys are derived using the shared secret \( K \), the exchange hash \( H
 \end{itemize}
 
 \textbf{Note:} The \texttt{session\_id} is the \( H \) value computed during the first key exchange and remains unchanged even when key re-exchange is performed.
+
+\section{Encryption}
+The used algorithms is negotiated during the key exchange phase (also key and iv are  established during in this phase), and can be diffrnt in each direction. \\
+A first example of \textbf{Supported Algorithms:}
+    \begin{itemize}[itemsep=0pt]
+        \item \textbf{Required} (for backward compatibility):
+        \begin{itemize}
+            \item 3des-cbc (with three keys, i.e., 168-bit key)
+        \end{itemize}[itemsep=0pt]
+        \item \textbf{Recommended:}
+        \begin{itemize}
+            \item aes128-cbc
+        \end{itemize}
+        \item \textbf{Optional:}
+        \begin{multicols}{3}
+            \begin{itemize}[itemsep=0pt]
+                \item blowfish-cbc
+                \item twofish256-cbc
+                \item twofish192-cbc
+                \item twofish128-cbc
+                \item aes256-cbc
+                \item aes192-cbc
+                \item serpent256-cbc
+                \item serpent192-cbc
+                \item serpent128-cbc
+                \item arcfour
+                \item idea-cbc
+                \item cast128-cbc
+                \item none
+            \end{itemize}
+        \end{multicols}
+    \end{itemize}
+
+\textit{Note:} all packets sent in one direction is a single data stream, so IV is passed from the end of one packet to the beginning of
+the next one
+
+\subsection{Encryption: Handling of IV}
+In the firsty packet, the IV is randomly generated during KEX. After that, depends is it us CBC or CTR:
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{CBC:} IV for next packet is the last encrypted block of the previous packet
+    \item \textbf{CTR:} IV for next packet is the IV of the pervious packet incremeted by one
+\end{itemize}
+
+
+\section{MAC}
+The used algorithms is negotiated during the key exchange phase and can be diffrnt in each direction. \\
+\textbf{Supported Algorithms (Basic Set):}
+\begin{multicols}{2}
+        \begin{itemize}[itemsep=0pt]
+            \item \textbf{hmac-sha1 (required)} [key length = 160-bit] (backward compatibility)
+            \item \textbf{hmac-sha1-96 (recommended)} [key length = 160-bit]
+            \item \textbf{hmac-md5 (optional)} [key length = 128-bit]
+            \item \textbf{hmac-md5-96 (optional)} [key length = 128-bit]
+        \end{itemize}
+\end{multicols}
+
+Even if these are the value inidicate in the RFC, for security we always need to use algorithms in the \textbf{SHA-2 family}. \\
+The MAC is computed in the following way (\textbf{ MAC = mac( key, seq\_number \,|\, cleartext\_packet )}):
+\begin{multicols}{2}
+    \begin{enumerate}[itemsep=0pt]
+        \item sequence number is implicit, not sent with the packet
+        \item sequence number is represented on 4 bytes
+        \item seq\_number initially 0 and incremented after each packet
+        \item seq\_number never reset (even if keys/algos are renegotiated)
+    \end{enumerate}
+\end{multicols}
+
+\section{SSH: Peer Authentication}
+
+\subsection{Server}
+The server authetication is done by an symmetric challenge-response (explicit server signature of the key exchange hash H). \\
+So the client need to locally store the server public keys (not good). Typically are saved in \texttt{\textasciitilde/.ssh/known\_hosts} and, is a key is absenty then it's offered at first connection with a TOFU (Trust On First Use) policy, \textbf{Very Danger}. \\
+For good practice we need to protect \texttt{known\_hosts} for \textbf{authentication and integrity} and \textbf{periodic audit/review} all the \texttt{known\_hosts} files to quickly detect added/deleted hosts or changed keys
+
+\subsection{Client}
+Can be done in two ways:
+\begin{itemize}[itemsep=0pt]
+    \item \textbf{Pusername and password:} the client sends the password to the server only after the protected channel is created. Usefull for avoid sniffing, but open to other attacks (e.g. on-line password enumeration)
+    \item \textbf{asymmetric challenge-response:} server locally stores the public keys of the users allowed to connect as a local user (typically in \texttt{\textasciitilde/.ssh/authorized\_keys}).
+\end{itemize}
+Some good practices are the protection of authorized\_keys for authentication and integrity and the periodic audit/review of all the authorized\_keys files to quickly detect added/deleted users or changed keys.
