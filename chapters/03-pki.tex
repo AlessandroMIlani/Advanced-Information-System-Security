@@ -1,1 +1,133 @@
-\section{Public Key Infrastructure}
+\chapter{The X.509 standard and PKI - \textbf{Appunti AI CORREGGERE}}
+
+\section{Introduction to PKI and X.509 Certificates}
+\subsection{Public Key Certificates (PKC)}
+A Public Key Certificate (PKC) is a data structure that securely binds a public key to some attributes. The term "securely bind" typically refers to the use of a digital signature by a Certification Authority (CA), although other techniques such as blockchain or direct trust are possible. The attributes bound to the public key are the ones relevant for the transaction being protected by the certificate. PKCs are crucial in achieving non-repudiation in digital signatures. Each PKC is the public complement of the corresponding private key.
+
+\subsection{Key Generation}
+Generating an asymmetric key-pair involves complex algorithms and usually requires a reliable Random Number Generator (RNG). Once generated, protecting the private key is crucial, both during storage and usage. Key generation and storage can be performed in software (e.g., a web browser), which introduces concerns about platform security (e.g., malware, weak implementation), or in dedicated hardware such as smart cards, which offer better protection but may be difficult to update.
+
+\section{Certification Architecture}
+\subsection{Entities in PKI}
+A PKI involves the following key entities:
+\begin{itemize}
+    \item \textbf{Certification Authority (CA)}: Generates and revokes certificates, publishes them along with status information.
+    \item \textbf{Registration Authority (RA)}: Verifies the identity of the certificate requestor and authorizes the certificate issuance or revocation.
+    \item \textbf{Validation Authority (VA)}: Provides services to verify the validity of a certificate, such as through a Certificate Revocation List (CRL) or Online Certificate Status Protocol (OCSP).
+\end{itemize}
+
+\subsection{Certificate Generation Process}
+The basic process for certificate generation includes the following steps:
+\begin{enumerate}
+    \item The user or RA generates a key-pair.
+    \item The RA verifies the user’s identity.
+    \item The CA issues a certificate, binding the public key to the verified identity.
+    \item The certificate is published in a repository (along with potential revocation lists).
+\end{enumerate}
+
+\section{X.509 Certificate Standard}
+X.509 is a widely adopted standard for public key certificates. It was first defined in 1988 and has undergone multiple revisions:
+\begin{itemize}
+    \item \textbf{Version 1 (1988)}: Basic certificate structure.
+    \item \textbf{Version 2 (1993)}: Introduced minor improvements.
+    \item \textbf{Version 3 (1996)}: Introduced extensions and attribute certificates.
+\end{itemize}
+
+\subsection{Certificate Structure}
+An X.509 certificate is defined in ASN.1 (Abstract Syntax Notation 1). The basic structure includes:
+\begin{verbatim}
+Certificate ::= SEQUENCE {
+    signatureAlgorithm AlgorithmIdentifier,
+    tbsCertificate TBSCertificate,
+    signatureValue BIT STRING
+}
+
+TBSCertificate ::= SEQUENCE {
+    version [0] Version DEFAULT v1,
+    serialNumber CertificateSerialNumber,
+    signature AlgorithmIdentifier,
+    issuer Name,
+    validity Validity,
+    subject Name,
+    subjectPublicKeyInfo SubjectPublicKeyInfo,
+    extensions [3] Extensions OPTIONAL
+}
+\end{verbatim}
+
+\subsection{Extensions}
+Certificates in X.509v3 support a variety of extensions, some of which are critical and others non-critical. Critical extensions must be recognized and processed by the entity verifying the certificate. If not, the certificate must be rejected.
+
+\subsubsection{Key and Policy Information}
+This class of extensions includes:
+\begin{itemize}
+    \item \textbf{Authority Key Identifier (AKI)}: Identifies the public key used to sign the certificate.
+    \item \textbf{Subject Key Identifier (SKI)}: Identifies the public key used by the subject of the certificate.
+    \item \textbf{Key Usage}: Defines the cryptographic operations for which the public key can be used (e.g., digital signature, key encipherment).
+    \item \textbf{Certificate Policies}: Lists policies under which the certificate was issued.
+    \item \textbf{Policy Mappings}: Maps policies between different certification domains.
+\end{itemize}
+
+\subsubsection{Certificate Path Constraints}
+Extensions that constrain the certificate path include:
+\begin{itemize}
+    \item \textbf{Basic Constraints (BC)}: Indicates whether the certificate subject can act as a CA.
+    \item \textbf{Name Constraints (NC)}: Limits the set of names that a CA can certify.
+    \item \textbf{Policy Constraints}: Restricts the application of policies in the certification path.
+\end{itemize}
+
+\subsubsection{Subject and Issuer Attributes}
+\begin{itemize}
+    \item \textbf{Subject Alternative Name (SAN)}: Allows for alternative methods to identify the subject (e.g., email, IP address).
+    \item \textbf{Issuer Alternative Name (IAN)}: Alternative ways to identify the certificate issuer.
+\end{itemize}
+
+\section{Certificate Revocation}
+A certificate can be revoked before its natural expiration. Reasons for revocation include key compromise, misuse, or incorrect issuance. The revocation status of a certificate must be checked by the relying party before accepting it.
+
+\subsection{Revocation Mechanisms}
+Two main mechanisms exist for checking the revocation status of a certificate:
+\begin{itemize}
+    \item \textbf{Certificate Revocation List (CRL)}: A list of revoked certificates published by the CA. The CRL is periodically updated.
+    \item \textbf{Online Certificate Status Protocol (OCSP)}: Provides real-time information on the status of a specific certificate.
+\end{itemize}
+
+\section{Certificate Transparency and Auditing}
+\subsection{Certificate Transparency (CT)}
+Certificate Transparency is an open auditing system that logs every issued certificate to ensure that no fraudulent certificates are issued without detection. It provides an infrastructure for domain owners and CAs to monitor certificate issuance.
+
+\subsection{Key Components of CT}
+\begin{itemize}
+    \item \textbf{Submitters}: Entities (usually CAs) that submit certificates to CT logs.
+    \item \textbf{Loggers}: Servers that maintain the public log of certificates.
+    \item \textbf{Monitors}: Entities that inspect the log for suspicious activity.
+    \item \textbf{Auditors}: Verifiers of log integrity, ensuring the logs are consistent and certificates are properly logged.
+\end{itemize}
+
+\section{Online Certificate Status Protocol (OCSP)}
+OCSP is a protocol used to query the current status of a certificate. Unlike CRLs, which provide a list of revoked certificates, OCSP queries the status of an individual certificate and returns a response indicating whether the certificate is "good", "revoked", or "unknown".
+
+\subsection{OCSP Response Structure}
+Each response is digitally signed to prevent tampering. A typical OCSP response contains:
+\begin{itemize}
+    \item \textbf{Certificate ID}: Identifies the certificate being queried.
+    \item \textbf{Certificate Status}: The current status (good, revoked, unknown).
+    \item \textbf{This Update}: The time of the response.
+    \item \textbf{Next Update}: The time at which the status is expected to change.
+\end{itemize}
+
+\section{Cryptographic Hardware}
+\subsection{Cryptographic Smart Cards}
+Smart cards are widely used to store private keys securely. They can also perform cryptographic operations, such as signing or encryption, directly on the card. Modern smart cards support both symmetric (e.g., AES) and asymmetric (e.g., RSA, ECDSA) algorithms. However, due to limited memory, the key size and operational capabilities of smart cards are constrained.
+
+\subsection{Hardware Security Modules (HSMs)}
+HSMs are hardware devices used to manage digital keys and perform cryptographic operations in a secure environment. HSMs are typically used by large organizations to protect high-value keys, and they support operations such as encryption, decryption, and digital signatures. HSMs come in various form factors, such as PCI cards, external devices, or network-attached appliances.
+
+\section{Automated Certificate Management Environment (ACME)}
+The ACME protocol automates the process of obtaining and managing public key certificates. Developed by the Internet Security Research Group (ISRG) for the Let's Encrypt service, ACME allows web servers to request, renew, and revoke certificates without human intervention.
+
+\subsection{ACME Process}
+\begin{enumerate}
+    \item The client (typically a web server) registers with a CA (e.g., Let's Encrypt) and proves control over the domain by responding to challenges.
+    \item The CA verifies domain control and issues a certificate.
+    \item The client can automatically renew or revoke certificates as needed.
+\end{enumerate}
